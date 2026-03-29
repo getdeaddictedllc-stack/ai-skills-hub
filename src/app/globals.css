@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100;
+  }
+
+  ::selection {
+    @apply bg-brand-500/20 text-brand-900 dark:text-brand-100;
+  }
+}
+
+@layer components {
+  .gradient-text {
+    @apply bg-gradient-to-r from-brand-500 via-brand-400 to-purple-500 bg-clip-text text-transparent;
+  }
+
+  .gradient-text-subtle {
+    @apply bg-gradient-to-r from-brand-600 to-brand-400 bg-clip-text text-transparent;
+  }
+
+  .glass {
+    @apply bg-white/70 backdrop-blur-xl border border-white/20 shadow-lg dark:bg-gray-900/70 dark:border-gray-800/50;
+  }
+
+  .glass-card {
+    @apply bg-white/60 backdrop-blur-lg border border-gray-200/50 shadow-sm
+           dark:bg-gray-900/60 dark:border-gray-700/50
+           hover:shadow-md hover:border-gray-300/60
+           dark:hover:border-gray-600/60
+           transition-all duration-300;
+  }
+
+  .glass-navbar {
+    @apply bg-white/80 backdrop-blur-2xl border-b border-gray-200/50 shadow-sm
+           dark:bg-gray-950/80 dark:border-gray-800/50;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .animate-in {
+    animation: animateIn 0.5s ease-out forwards;
+  }
+
+  @keyframes animateIn {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
