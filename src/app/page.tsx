@@ -1,10 +1,12 @@
-import { industries } from "@/lib/industries";
+import { getAllIndustries } from "@/lib/data-service";
 import { HeroSection } from "@/components/home/HeroSection";
 import { StatsBar } from "@/components/home/StatsBar";
 import { SearchBar } from "@/components/home/SearchBar";
 import { IndustryGrid } from "@/components/home/IndustryGrid";
 
 export default function HomePage() {
+  const industries = getAllIndustries();
+
   return (
     <div className="relative">
       {/* Background decoration */}

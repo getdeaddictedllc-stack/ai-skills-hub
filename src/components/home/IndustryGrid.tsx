@@ -7,8 +7,11 @@ import type { LucideIcon } from "lucide-react";
 import type { Industry } from "@/lib/types";
 
 function getIcon(name: string): LucideIcon {
-  const icon = (Icons as Record<string, LucideIcon>)[name];
-  return icon || Icons.Boxes;
+  const icon = (Icons as Record<string, unknown>)[name];
+  if (icon && typeof icon === "function") {
+    return icon as LucideIcon;
+  }
+  return Icons.Boxes;
 }
 
 const container = {

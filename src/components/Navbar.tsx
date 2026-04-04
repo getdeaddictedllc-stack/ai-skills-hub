@@ -2,20 +2,23 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Search, Moon, Sun, Menu, X, Sparkles } from "lucide-react";
+import { Search, Moon, Sun, Menu, X, Sparkles, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useCart } from "@/context/CartContext";
 
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/industries", label: "Industries" },
   { href: "/skills", label: "Skills" },
   { href: "/workflows", label: "Workflows" },
+  { href: "/pricing", label: "Pricing" },
 ];
 
 export function Navbar() {
   const [isDark, setIsDark] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { itemCount } = useCart();
 
   useEffect(() => {
     const stored = localStorage.getItem("theme");
@@ -83,6 +86,20 @@ export function Navbar() {
             <Search className="h-[18px] w-[18px]" />
           </Link>
 
+          {/* Cart icon */}
+          <Link
+            href="/cart"
+            className="relative flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100/80 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800/60 transition-colors"
+            aria-label="Shopping cart"
+          >
+            <ShoppingCart className="h-[18px] w-[18px]" />
+            {itemCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-600 px-1 text-[10px] font-bold text-white">
+                {itemCount > 99 ? "99+" : itemCount}
+              </span>
+            )}
+          </Link>
+
           <button
             onClick={toggleDark}
             className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100/80 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800/60 transition-colors"
@@ -124,6 +141,19 @@ export function Navbar() {
                 {link.label}
               </Link>
             ))}
+            <Link
+              href="/cart"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800/60 transition-colors"
+            >
+              <ShoppingCart className="h-4 w-4" />
+              Cart
+              {itemCount > 0 && (
+                <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-600 px-1.5 text-xs font-bold text-white">
+                  {itemCount}
+                </span>
+              )}
+            </Link>
           </div>
         </div>
       )}
