@@ -3,6 +3,7 @@
 import { ShoppingCart, Check } from "lucide-react";
 import { useCart, type CartItem } from "@/context/CartContext";
 import { cn } from "@/lib/utils";
+import { trackEvent } from "@/components/GoogleAnalytics";
 
 interface AddToCartButtonProps {
   item: CartItem;
@@ -25,8 +26,10 @@ export default function AddToCartButton({
     e.stopPropagation();
     if (inCart) {
       removeItem(item.id);
+      trackEvent("remove_from_cart", item.type, item.name, item.price);
     } else {
       addItem(item);
+      trackEvent("add_to_cart", item.type, item.name, item.price);
     }
   };
 

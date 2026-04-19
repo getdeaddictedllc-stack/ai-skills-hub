@@ -5,12 +5,14 @@ import Link from "next/link";
 import { Search, Moon, Sun, Menu, X, Sparkles, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/context/CartContext";
+import { UserMenu } from "@/components/UserMenu";
 
 const navLinks = [
   { href: "/", label: "Home" },
-  { href: "/industries", label: "Industries" },
   { href: "/skills", label: "Skills" },
   { href: "/workflows", label: "Workflows" },
+  { href: "/agents", label: "Agents" },
+  { href: "/blog", label: "Blog" },
   { href: "/pricing", label: "Pricing" },
 ];
 
@@ -111,6 +113,9 @@ export function Navbar() {
               <Moon className="h-[18px] w-[18px]" />
             )}
           </button>
+
+          {/* User menu */}
+          <UserMenu />
 
           {/* Mobile menu button */}
           <button

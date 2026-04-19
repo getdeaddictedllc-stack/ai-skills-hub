@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useCart, type CartItem } from "@/context/CartContext";
 import { PAID_MODE } from "@/lib/pricing";
@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { generateSkillFileContent, generateWorkflowFileContent } from "@/lib/skill-file-generator";
 import { getAllSkills, getAllWorkflows } from "@/lib/data-service";
+import JSZip from "jszip";
+import { trackEvent } from "@/components/GoogleAnalytics";
 
 function downloadFile(filename: string, content: string) {
   const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
@@ -60,7 +62,7 @@ export default function CheckoutPage() {
     );
   }
 
-  const handleDownloadItem = (item: CartItem) => {
+  const handleDownloadItem = async (item: CartItem) => {
     if (item.type === "skill") {
       const allSkills = getAllSkills();
       const skill = allSkills.find((s) => s.id === item.id);
@@ -74,24 +76,68 @@ export default function CheckoutPage() {
         downloadFile(`${workflow.id}.md`, generateWorkflowFileContent(workflow));
       }
     } else if (item.type === "bundle") {
-      // Download all skills and workflows for the industry
+      const zip = new JSZip();
       const allSkills = getAllSkills();
       const allWorkflows = getAllWorkflows();
       const industrySkills = allSkills.filter((s) => s.industry === item.industry);
       const industryWorkflows = allWorkflows.filter((w) => w.industry === item.industry);
+      const skillsFolder = zip.folder("skills");
+      const workflowsFolder = zip.folder("workflows");
       for (const skill of industrySkills) {
-        downloadFile(`${skill.id}.md`, generateSkillFileContent(skill));
+        skillsFolder?.file(`${skill.id}.md`, generateSkillFileContent(skill));
       }
       for (const workflow of industryWorkflows) {
-        downloadFile(`${workflow.id}.md`, generateWorkflowFileContent(workflow));
+        workflowsFolder?.file(`${workflow.id}.md`, generateWorkflowFileContent(workflow));
       }
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${item.industry}-bundle.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     }
   };
 
-  const handleDownloadAll = () => {
+  const handleDownloadAll = async () => {
+    const zip = new JSZip();
+    const allSkills = getAllSkills();
+    const allWorkflows = getAllWorkflows();
+
     for (const item of purchasedItems) {
-      handleDownloadItem(item);
+      if (item.type === "skill") {
+        const skill = allSkills.find((s) => s.id === item.id);
+        if (skill) {
+          zip.file(`skills/${skill.id}.md`, generateSkillFileContent(skill));
+        }
+      } else if (item.type === "workflow") {
+        const workflow = allWorkflows.find((w) => w.id === item.id);
+        if (workflow) {
+          zip.file(`workflows/${workflow.id}.md`, generateWorkflowFileContent(workflow));
+        }
+      } else if (item.type === "bundle") {
+        const industrySkills = allSkills.filter((s) => s.industry === item.industry);
+        const industryWorkflows = allWorkflows.filter((w) => w.industry === item.industry);
+        for (const skill of industrySkills) {
+          zip.file(`${item.industry}/skills/${skill.id}.md`, generateSkillFileContent(skill));
+        }
+        for (const workflow of industryWorkflows) {
+          zip.file(`${item.industry}/workflows/${workflow.id}.md`, generateWorkflowFileContent(workflow));
+        }
+      }
     }
+
+    const blob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "ai-skills-hub-purchase.zip";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   if (isComplete) {
@@ -196,11 +242,23 @@ export default function CheckoutPage() {
     setPurchasedItems([...items]);
 
     if (PAID_MODE) {
-      // TODO: Replace with actual Stripe integration
-      // const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_KEY);
-      // const session = await fetch('/api/checkout', { method: 'POST', body: JSON.stringify({ items, email, name }) });
-      // stripe.redirectToCheckout({ sessionId: session.id });
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      try {
+        const res = await fetch("/api/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items, email, name }),
+        });
+        const data = await res.json();
+        if (data.url) {
+          window.location.href = data.url;
+          return;
+        }
+        // If Stripe is not configured, fall through to local checkout
+        console.warn("Stripe not configured, using local checkout:", data.error);
+      } catch {
+        console.warn("Stripe API unavailable, using local checkout");
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     } else {
       // Free mode — instant checkout
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -208,6 +266,32 @@ export default function CheckoutPage() {
 
     setIsProcessing(false);
     setIsComplete(true);
+    trackEvent("purchase", "checkout", email, subtotal);
+
+    // Save purchase record for dashboard
+    try {
+      const existing = JSON.parse(localStorage.getItem("aiskillhub-purchases") ?? "[]");
+      existing.unshift({
+        id: `purchase-${Date.now()}`,
+        items: items.map((i) => ({ id: i.id, type: i.type, name: i.name, price: i.price, industry: i.industry })),
+        total: subtotal,
+        date: new Date().toISOString(),
+      });
+      localStorage.setItem("aiskillhub-purchases", JSON.stringify(existing));
+    } catch {}
+
+    // Send receipt email (fire-and-forget)
+    fetch("/api/send-receipt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email,
+        name,
+        items: items.map((i) => ({ name: i.name, type: i.type, price: i.price })),
+        total: subtotal,
+      }),
+    }).catch(() => {});
+
     clearCart();
   };
 

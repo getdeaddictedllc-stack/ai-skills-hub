@@ -3,7 +3,7 @@ import type { Skill, Workflow } from "@/lib/types";
 // ---------------------------------------------------------------------------
 // Feature flag: set to true to enable real pricing, false for 100% free
 // ---------------------------------------------------------------------------
-export const PAID_MODE = false;
+export const PAID_MODE = process.env.NEXT_PUBLIC_PAID_MODE === "true";
 
 // ---------------------------------------------------------------------------
 // Pricing tiers (used when PAID_MODE = true)

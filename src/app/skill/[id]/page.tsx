@@ -33,8 +33,10 @@ import type { Skill } from "@/lib/types";
 import Badge from "@/components/Badge";
 import SkillCard from "@/components/SkillCard";
 import EmbedCodeBlock from "@/components/EmbedCodeBlock";
-// DownloadSkillButton removed — downloads available after purchase only
+import SkillPreview from "@/components/SkillPreview";
 import AddToCartButton from "@/components/AddToCartButton";
+import { SkillJsonLd } from "@/components/JsonLd";
+import { generateSkillFileContent } from "@/lib/skill-file-generator";
 
 // ---------------------------------------------------------------------------
 // Static generation
@@ -83,9 +85,11 @@ export default async function SkillDetailPage({
   const detail = generateSkillDetailContent(skill);
   const price = getSkillPrice(skill);
   const originalPrice = getSkillOriginalPrice(skill);
+  const previewContent = generateSkillFileContent(skill);
 
   return (
     <div className="relative min-h-screen">
+      <SkillJsonLd skill={skill} industryName={industry?.name ?? skill.industry} />
       {/* Background */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 left-1/2 -translate-x-1/2 h-[500px] w-[800px] rounded-full bg-brand-500/5 blur-3xl dark:bg-brand-500/10" />
@@ -401,6 +405,11 @@ export default async function SkillDetailPage({
             estimatedTime={skill.estimatedTime}
           />
         </DetailSection>
+
+        {/* Skill File Preview */}
+        <section className="mb-10">
+          <SkillPreview skill={skill} previewContent={previewContent} />
+        </section>
 
         {/* Related Skills */}
         {related.length > 0 && (

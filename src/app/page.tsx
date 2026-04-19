@@ -3,12 +3,16 @@ import { HeroSection } from "@/components/home/HeroSection";
 import { StatsBar } from "@/components/home/StatsBar";
 import { SearchBar } from "@/components/home/SearchBar";
 import { IndustryGrid } from "@/components/home/IndustryGrid";
+import { SocialProof } from "@/components/home/SocialProof";
+import { CTASection } from "@/components/home/CTASection";
+import { WebsiteJsonLd } from "@/components/JsonLd";
 
 export default function HomePage() {
   const industries = getAllIndustries();
 
   return (
     <div className="relative">
+      <WebsiteJsonLd />
       {/* Background decoration */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 left-1/2 -translate-x-1/2 h-[600px] w-[900px] rounded-full bg-brand-500/5 blur-3xl dark:bg-brand-500/10" />
@@ -25,7 +29,7 @@ export default function HomePage() {
         <SearchBar />
 
         {/* Industry Grid */}
-        <section className="pb-24">
+        <section className="pb-16">
           <div className="mb-8 text-center">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white sm:text-3xl">
               Explore by Industry
@@ -36,6 +40,12 @@ export default function HomePage() {
           </div>
           <IndustryGrid industries={industries} />
         </section>
+
+        {/* Social Proof */}
+        <SocialProof />
+
+        {/* CTA */}
+        <CTASection />
       </div>
     </div>
   );

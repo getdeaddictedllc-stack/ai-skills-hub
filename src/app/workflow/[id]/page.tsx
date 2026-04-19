@@ -12,8 +12,8 @@ import { getWorkflowPrice, getWorkflowOriginalPrice, PAID_MODE } from "@/lib/pri
 import Badge from "@/components/Badge";
 import WorkflowCard from "@/components/WorkflowCard";
 import EmbedCodeBlock from "@/components/EmbedCodeBlock";
-// DownloadWorkflowButton removed — downloads available after purchase only
 import AddToCartButton from "@/components/AddToCartButton";
+import { WorkflowJsonLd } from "@/components/JsonLd";
 import { StepFlow } from "./StepFlow";
 import {
   Clock,
@@ -109,6 +109,7 @@ export default async function WorkflowDetailPage({
 
   return (
     <div className="relative min-h-screen">
+      <WorkflowJsonLd workflow={workflow} industryName={industry?.name ?? workflow.industry} />
       {/* Background decoration */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 left-1/2 -translate-x-1/2 h-[600px] w-[900px] rounded-full bg-brand-500/5 blur-3xl dark:bg-brand-500/10" />
