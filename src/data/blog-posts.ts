@@ -634,6 +634,135 @@ AI Skills Hub skill files list compatible models for every skill and provide con
 
 [Browse All AI Skills →](/skills)`,
   },
+  {
+    slug: "production-ready-ai-skills-library-for-teams",
+    title: "How to Build a Production-Ready AI Skills Library for Your Team (2026 Playbook)",
+    description: "Most teams burn weeks rewriting the same prompts. This is the practical playbook for building a reusable, production-grade AI skills library — system prompts, workflows, and agents your whole team can ship with.",
+    category: "Engineering",
+    tags: ["ai-skills", "prompt-engineering", "ai-workflows", "team-productivity", "llmops"],
+    author: "AI Skills Hub",
+    publishedAt: "2026-05-29",
+    readingTime: "11 min",
+    relatedIndustries: ["software-dev", "data-science", "marketing"],
+    content: `## The hidden tax every AI team is paying
+
+Walk into almost any team using AI in 2026 and you'll find the same waste: three engineers, two analysts, and a marketer have each independently written a "summarize this document" prompt. None of them are the same. None are version-controlled. None handle edge cases. And when one of them quits, their prompts leave with them.
+
+This is the **prompt sprawl tax** — and it's expensive. Teams report spending 20-40% of their AI build time re-solving prompting problems someone on the team has already solved. The fix isn't a better model. It's treating prompts like what they actually are: production code that deserves a library, a review process, and reuse.
+
+This playbook walks through how to build that library — what goes in it, how to structure it, and how to get your team to actually use it.
+
+## What a "skill" actually is
+
+A skill is a packaged, reusable unit of AI capability. The minimum viable skill file contains five things:
+
+1. **A validated system prompt** — the instructions, role, and constraints, refined against real inputs.
+2. **Model configuration** — which model(s) it's tested on, temperature, max tokens, and why.
+3. **Input/output contract** — what it expects in, what it guarantees out (ideally a JSON schema).
+4. **Guardrails** — how it handles missing data, hostile input, and out-of-scope requests.
+5. **Integration code** — a copy-pasteable snippet that calls it from your stack.
+
+The difference between a skill and "a prompt someone wrote in Slack" is that a skill has been *productionized*: tested, bounded, and documented well enough that a teammate who's never seen it can ship with it in five minutes.
+
+## Step 1: Inventory before you build
+
+Don't start by writing prompts. Start by listing the AI tasks your team actually does repeatedly. Pull from real activity — search your team chat for "prompt," scan your codebase for inline LLM calls, ask each person for their top three.
+
+You'll typically find 15-30 recurring tasks clustered into a handful of categories:
+
+- **Extraction** — pull structured data out of documents, emails, transcripts.
+- **Classification** — route, tag, triage, prioritize.
+- **Generation** — drafts, summaries, replies, code.
+- **Analysis** — sentiment, risk, anomaly, compliance review.
+
+Rank them by **frequency × pain**. The highest-frequency, highest-error tasks are your first skills. Everything else waits.
+
+## Step 2: Standardize the skill file format
+
+The single biggest predictor of whether a skills library gets used is consistency. If every skill looks different, nobody trusts the library. Pick one format and enforce it.
+
+A battle-tested structure:
+
+\`\`\`
+skill-name/
+  README.md          # what it does, when to use it, when NOT to
+  system-prompt.md   # the actual instructions
+  config.json        # model, temperature, max_tokens, tested-on
+  schema.json        # input + output contract
+  examples/          # 3-5 real input/output pairs
+  integrate.ts       # drop-in client code
+\`\`\`
+
+The \`examples/\` directory matters more than people expect. Real input/output pairs are simultaneously your documentation, your regression tests, and your few-shot examples. Treat them as the source of truth.
+
+## Step 3: Write for the next person, not the model
+
+The instinct is to optimize prompts for the model. The higher-leverage move is to optimize the *file* for the next human who has to use, debug, or extend it.
+
+Concretely:
+
+- **State the failure modes up front.** "This skill assumes clean text input. It will hallucinate dates if the source document has none — validate downstream."
+- **Pin the model.** "Tested on Claude Opus 4.8 and GPT-4o. Do not run on smaller models — classification accuracy drops below 80%."
+- **Show the boundary.** Document one example of input this skill should *refuse* or escalate, not just the happy path.
+
+A skill that honestly documents its limits gets trusted and reused. A skill that pretends to be magic gets abandoned the first time it surprises someone.
+
+## Step 4: Build workflows, not just skills
+
+Individual skills are Lego bricks. The real productivity unlock is chaining them into **workflows** — multi-step pipelines where the output of one skill feeds the next.
+
+Example: an inbound-support workflow.
+
+1. **Classify** the incoming message (skill: intent-classifier)
+2. **Extract** the order ID and entities (skill: entity-extractor)
+3. **Retrieve** the relevant policy (your RAG step)
+4. **Draft** a reply grounded in policy (skill: grounded-reply-writer)
+5. **Review** the draft for tone and policy compliance (skill: compliance-checker)
+
+Each step is an independently testable skill. The workflow is the composition. When step 4 produces bad output, you know exactly which brick to fix — because each brick has its own examples and contract. This is the difference between an AI feature you can debug and one you pray about.
+
+## Step 5: Add agents only where they earn their cost
+
+Agents — skills that loop, call tools, and decide their own next step — are powerful and overused. The rule: use a deterministic workflow when the steps are known, and an agent only when the path genuinely can't be predicted in advance.
+
+Good agent use cases in 2026:
+- Research tasks where the next query depends on the last answer.
+- Triage where the agent decides which specialist skill to invoke.
+- Multi-system operations where the sequence varies per case.
+
+Bad agent use cases: anything you could draw as a flowchart. If you can flowchart it, build a workflow — it's cheaper, faster, and debuggable.
+
+## Step 6: Measure what the library is worth
+
+A skills library is an investment, so prove the return. Track three numbers:
+
+- **Time-to-ship** for a new AI feature, before vs. after the library. Teams typically cut this from days to hours.
+- **Reuse rate** — what fraction of new features use an existing skill instead of a fresh prompt. Aim for 70%+.
+- **Incident rate** — AI-caused bugs in production. A documented, bounded skill produces far fewer surprises than ad-hoc prompts.
+
+When you can say "we shipped the new feature in three hours because four of the five skills already existed," the library justifies itself.
+
+## The build-vs-buy decision
+
+You can build all of this in-house. Many teams should — for your truly proprietary tasks, your skills *are* your moat, and they belong in your repo.
+
+But for the 80% of tasks that are common across every company — document extraction, classification, summarization, fraud checks, support triage, content generation — there's no advantage to rewriting from scratch. These are solved problems. Buying a validated, production-ready skill file and adapting it to your data is the difference between shipping this week and shipping next quarter.
+
+That's exactly why AI Skills Hub exists: a library of production-ready AI skills, workflows, and agents organized by industry — each with the system prompt, model config, contract, and integration code already done. Use them as-is, fork them, or treat them as the reference implementation for your own internal library.
+
+## Start this week
+
+You don't need a six-month initiative. The minimum viable skills library:
+
+1. Pick your three highest frequency-times-pain tasks.
+2. Productionize each into the standard file format with real examples.
+3. Put them in a shared repo with a README index.
+4. Make "check the library first" a rule in code review.
+
+That's it. Three skills, one format, one rule. From there it compounds — every feature your team ships either uses an existing skill or adds a new one, and the library gets more valuable every week.
+
+[Browse production-ready AI skills by industry →](/skills) · [Explore multi-step workflows →](/workflows) · [See the agent library →](/agents)`,
+  },
 ];
 
 export function getBlogPost(slug: string): BlogPost | undefined {

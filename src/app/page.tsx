@@ -1,10 +1,12 @@
 import { getAllIndustries } from "@/lib/data-service";
 import { HeroSection } from "@/components/home/HeroSection";
+import { BundleOfferBanner } from "@/components/home/BundleOfferBanner";
 import { StatsBar } from "@/components/home/StatsBar";
 import { SearchBar } from "@/components/home/SearchBar";
 import { IndustryGrid } from "@/components/home/IndustryGrid";
 import { SocialProof } from "@/components/home/SocialProof";
 import { CTASection } from "@/components/home/CTASection";
+import { EmailCaptureSection } from "@/components/home/EmailCaptureSection";
 import { WebsiteJsonLd } from "@/components/JsonLd";
 
 export default function HomePage() {
@@ -21,6 +23,9 @@ export default function HomePage() {
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Hero */}
         <HeroSection />
+
+        {/* Launch bundle offer (renders only when NEXT_PUBLIC_PAYMENT_LINK_URL is set) */}
+        <BundleOfferBanner />
 
         {/* Stats */}
         <StatsBar />
@@ -43,6 +48,9 @@ export default function HomePage() {
 
         {/* Social Proof */}
         <SocialProof />
+
+        {/* Email capture lead magnet */}
+        <EmailCaptureSection />
 
         {/* CTA */}
         <CTASection />
