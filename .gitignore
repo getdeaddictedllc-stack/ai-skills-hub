@@ -56,3 +56,12 @@ __pycache__/
 *.log
 .turbo/
 coverage/
+
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# local lead store
+/.data/

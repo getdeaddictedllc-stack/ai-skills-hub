@@ -12,6 +12,7 @@ const customConfig: Config.InitialOptions = {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
   testRegex: '.*\\.(test|spec)\\.(ts|tsx)$',
+  testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/e2e/'],
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
     '!src/**/*.d.ts',

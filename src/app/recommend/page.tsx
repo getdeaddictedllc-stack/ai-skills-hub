@@ -196,7 +196,7 @@ export default function RecommendPage() {
             <motion.div key="level" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
               <h2 className="mb-6 text-center text-xl font-bold text-gray-900 dark:text-white">
                 <Gauge className="mr-2 inline h-5 w-5" />
-                What's your experience level?
+                What&apos;s your experience level?
               </h2>
               <div className="mx-auto max-w-lg space-y-3">
                 {LEVELS.map((l) => (
