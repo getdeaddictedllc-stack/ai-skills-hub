@@ -98,6 +98,11 @@ export async function hasEntitlement(email: string, itemId: string): Promise<boo
   return records.some((r) => r.email === normalizedEmail && r.itemId === itemId);
 }
 
+/** True if any entitlement has ever been recorded (used to flag the first sale). */
+export async function hasAnyEntitlement(): Promise<boolean> {
+  return (await readAll()).length > 0;
+}
+
 /** All items the customer owns. */
 export async function getEntitlements(email: string): Promise<string[]> {
   const normalizedEmail = email.trim().toLowerCase();

@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { grantEntitlements, revokeByPaymentIntent } from "@/lib/entitlements";
+import {
+  grantEntitlements,
+  revokeByPaymentIntent,
+  hasAnyEntitlement,
+} from "@/lib/entitlements";
+import { notifyOwner } from "@/lib/notify";
+import { isProductionRuntime } from "@/lib/stripe-mode";
 
 export const runtime = "nodejs";
 
@@ -12,6 +18,7 @@ const SIGNATURE_TOLERANCE_SECONDS = 5 * 60;
 
 interface StripeEvent {
   type: string;
+  livemode?: boolean;
   data: {
     object: {
       id: string;
@@ -96,6 +103,18 @@ export async function POST(req: NextRequest) {
         break;
       }
 
+      // Catch a test-mode/dead-pipeline misconfig the moment a real event lands.
+      if (isProductionRuntime() && event.livemode === false) {
+        console.error("[STRIPE MISCONFIG] test-mode event reached production:", session.id);
+        await notifyOwner(
+          "⚠️ Stripe MISCONFIG: test-mode payment in production",
+          `Session ${session.id} arrived with livemode=false on the production deployment. ` +
+            `Real payments may be silently failing — verify STRIPE_SECRET_KEY is the sk_live_ key.`
+        );
+      }
+
+      const firstEver = !(await hasAnyEntitlement());
+
       // Activate access: this is the step the regression test guards.
       await grantEntitlements(email, itemIds, session.id, session.payment_intent ?? "");
       console.log("[Stripe Webhook] entitlements activated:", {
@@ -104,6 +123,14 @@ export async function POST(req: NextRequest) {
         items: itemIds,
         amount: session.amount_total,
       });
+
+      // Owner alert on every sale — and loudly on the first, so a dead webhook
+      // is obvious (no alert ever = pipeline is broken).
+      const amount = ((session.amount_total ?? 0) / 100).toFixed(2);
+      await notifyOwner(
+        `${firstEver ? "🎉 FIRST real payment" : "💰 New payment"}: $${amount}`,
+        `Email: ${email}\nItems: ${itemIds.join(", ")}\nSession: ${session.id}\nLive mode: ${event.livemode ?? "unknown"}`
+      );
       break;
     }
 

@@ -175,6 +175,81 @@ test("a signed refund revokes entitlements and redelivery is idempotent", async 
   await expect(hasEntitlement("refundme@example.com", "marketing-seo-content-writer")).resolves.toBe(false);
 });
 
+function alertSubjects(fetchMock: jest.Mock): string[] {
+  return fetchMock.mock.calls
+    .filter(([url]) => String(url).includes("api.resend.com"))
+    .map(([, opts]) => JSON.parse((opts as { body: string }).body).subject as string);
+}
+
+test("alerts the owner on the first real payment so a dead webhook is caught", async () => {
+  const { POST } = await loadRoute();
+
+  const savedFile = process.env.ENTITLEMENTS_FILE;
+  const savedFetch = global.fetch;
+  const fresh = mkdtempSync(path.join(tmpdir(), "ent-first-"));
+  process.env.ENTITLEMENTS_FILE = path.join(fresh, "e.jsonl"); // empty store => "first"
+  process.env.RESEND_API_KEY = "re_test_key";
+  process.env.OWNER_ALERT_EMAIL = "owner@aiskillhub.info";
+  const fetchMock = jest.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+  global.fetch = fetchMock as never;
+
+  try {
+    const body = completedEvent({
+      sessionId: "cs_alert_1",
+      email: "firstbuyer@example.com",
+      itemIds: ["data-science-feature-pipeline"],
+      paymentIntent: "pi_alert_1",
+    });
+    const res = await POST(post(body, sign(body)) as never);
+    expect(res.status).toBe(200);
+
+    const subjects = alertSubjects(fetchMock);
+    expect(subjects.some((s) => /FIRST real payment/.test(s))).toBe(true);
+  } finally {
+    global.fetch = savedFetch;
+    delete process.env.RESEND_API_KEY;
+    delete process.env.OWNER_ALERT_EMAIL;
+    process.env.ENTITLEMENTS_FILE = savedFile;
+    rmSync(fresh, { recursive: true, force: true });
+  }
+});
+
+test("alerts the owner when a test-mode event reaches production", async () => {
+  const { POST } = await loadRoute();
+
+  const savedEnv = process.env.VERCEL_ENV;
+  const savedFetch = global.fetch;
+  process.env.VERCEL_ENV = "production";
+  process.env.RESEND_API_KEY = "re_test_key";
+  const fetchMock = jest.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+  global.fetch = fetchMock as never;
+
+  try {
+    const body = JSON.stringify({
+      type: "checkout.session.completed",
+      livemode: false, // misconfig: test-mode event on a production deploy
+      data: {
+        object: {
+          id: "cs_misconfig",
+          customer_email: "buyer@example.com",
+          amount_total: 9900,
+          payment_intent: "pi_misconfig",
+          metadata: { item_ids: "data-science-feature-pipeline" },
+        },
+      },
+    });
+    const res = await POST(post(body, sign(body)) as never);
+    expect(res.status).toBe(200);
+
+    const subjects = alertSubjects(fetchMock);
+    expect(subjects.some((s) => /MISCONFIG/.test(s))).toBe(true);
+  } finally {
+    global.fetch = savedFetch;
+    process.env.VERCEL_ENV = savedEnv;
+    delete process.env.RESEND_API_KEY;
+  }
+});
+
 test("returns 500 when the webhook secret is not configured", async () => {
   const saved = process.env.STRIPE_WEBHOOK_SECRET;
   delete process.env.STRIPE_WEBHOOK_SECRET;
