@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { grantEntitlements } from "@/lib/entitlements";
+import { grantEntitlements, revokeByPaymentIntent } from "@/lib/entitlements";
 
 export const runtime = "nodejs";
 
@@ -19,6 +19,7 @@ interface StripeEvent {
       metadata?: Record<string, string>;
       payment_status?: string;
       amount_total?: number;
+      payment_intent?: string;
     };
   };
 }
@@ -96,13 +97,28 @@ export async function POST(req: NextRequest) {
       }
 
       // Activate access: this is the step the regression test guards.
-      await grantEntitlements(email, itemIds, session.id);
+      await grantEntitlements(email, itemIds, session.id, session.payment_intent ?? "");
       console.log("[Stripe Webhook] entitlements activated:", {
         sessionId: session.id,
         email,
         items: itemIds,
         amount: session.amount_total,
       });
+      break;
+    }
+
+    case "charge.refunded":
+    case "charge.dispute.created": {
+      // The charge shares its PaymentIntent id with the completed session, which
+      // is how we find what to revoke. Revoke is idempotent, so redelivery is safe.
+      const charge = event.data.object;
+      const paymentIntentId = charge.payment_intent ?? "";
+      if (!paymentIntentId) {
+        console.warn("[Stripe Webhook] refund/dispute missing payment_intent:", charge.id);
+        break;
+      }
+      const removed = await revokeByPaymentIntent(paymentIntentId);
+      console.log("[Stripe Webhook] entitlements revoked:", { type: event.type, paymentIntentId, removed });
       break;
     }
 

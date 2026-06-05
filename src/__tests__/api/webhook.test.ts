@@ -21,6 +21,7 @@ function completedEvent(opts: {
   sessionId: string;
   email: string;
   itemIds: string[];
+  paymentIntent?: string;
 }): string {
   return JSON.stringify({
     type: "checkout.session.completed",
@@ -29,7 +30,21 @@ function completedEvent(opts: {
         id: opts.sessionId,
         customer_email: opts.email,
         amount_total: 9900,
+        payment_intent: opts.paymentIntent,
         metadata: { item_ids: opts.itemIds.join(",") },
+      },
+    },
+  });
+}
+
+function refundEvent(opts: { chargeId: string; paymentIntent: string; type?: string }): string {
+  return JSON.stringify({
+    type: opts.type ?? "charge.refunded",
+    data: {
+      object: {
+        id: opts.chargeId,
+        payment_intent: opts.paymentIntent,
+        amount_refunded: 9900,
       },
     },
   });
@@ -112,6 +127,52 @@ test("is idempotent across at-least-once redelivery of the same session", async 
 
   const owned = await getEntitlements("replay@example.com");
   expect(owned.filter((id) => id === "data-science-feature-pipeline")).toHaveLength(1);
+});
+
+test("a forged refund event cannot revoke an existing entitlement", async () => {
+  const { POST } = await loadRoute();
+  const { hasEntitlement } = await loadEntitlements();
+
+  // Grant legitimately first.
+  const grant = completedEvent({
+    sessionId: "cs_forge_refund",
+    email: "owner@example.com",
+    itemIds: ["data-science-feature-pipeline"],
+    paymentIntent: "pi_forge_1",
+  });
+  await POST(post(grant, sign(grant)) as never);
+  await expect(hasEntitlement("owner@example.com", "data-science-feature-pipeline")).resolves.toBe(true);
+
+  // Forged refund (bad signature) must be rejected and revoke nothing.
+  const refund = refundEvent({ chargeId: "ch_forge", paymentIntent: "pi_forge_1" });
+  const res = await POST(post(refund, "t=9999999999,v1=deadbeef") as never);
+  expect(res.status).toBe(400);
+  await expect(hasEntitlement("owner@example.com", "data-science-feature-pipeline")).resolves.toBe(true);
+});
+
+test("a signed refund revokes entitlements and redelivery is idempotent", async () => {
+  const { POST } = await loadRoute();
+  const { hasEntitlement } = await loadEntitlements();
+
+  const grant = completedEvent({
+    sessionId: "cs_real_refund",
+    email: "refundme@example.com",
+    itemIds: ["marketing-seo-content-writer", "marketing-ad-copy-generator"],
+    paymentIntent: "pi_refund_1",
+  });
+  await POST(post(grant, sign(grant)) as never);
+  await expect(hasEntitlement("refundme@example.com", "marketing-seo-content-writer")).resolves.toBe(true);
+
+  const refund = refundEvent({ chargeId: "ch_real", paymentIntent: "pi_refund_1" });
+  const first = await POST(post(refund, sign(refund)) as never);
+  expect(first.status).toBe(200);
+  await expect(hasEntitlement("refundme@example.com", "marketing-seo-content-writer")).resolves.toBe(false);
+  await expect(hasEntitlement("refundme@example.com", "marketing-ad-copy-generator")).resolves.toBe(false);
+
+  // Redelivery of the same refund is a safe no-op.
+  const second = await POST(post(refund, sign(refund)) as never);
+  expect(second.status).toBe(200);
+  await expect(hasEntitlement("refundme@example.com", "marketing-seo-content-writer")).resolves.toBe(false);
 });
 
 test("returns 500 when the webhook secret is not configured", async () => {

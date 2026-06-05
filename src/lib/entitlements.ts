@@ -1,4 +1,4 @@
-import { appendFile, mkdir, readFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 // Durable on local dev (.data/), ephemeral on Vercel (/tmp). Tests override
@@ -13,6 +13,9 @@ export interface EntitlementRecord {
   email: string;
   itemId: string;
   sessionId: string;
+  // Stripe PaymentIntent id — the stable link between the completed session and
+  // a later charge.refunded / dispute event, so refunds can find what to revoke.
+  paymentIntentId: string;
   ts: string;
 }
 
@@ -37,7 +40,8 @@ async function readAll(): Promise<EntitlementRecord[]> {
 export async function grantEntitlements(
   email: string,
   itemIds: string[],
-  sessionId: string
+  sessionId: string,
+  paymentIntentId = ""
 ): Promise<EntitlementRecord[]> {
   const normalizedEmail = email.trim().toLowerCase();
   const items = Array.from(new Set(itemIds.map((id) => id.trim()).filter(Boolean)));
@@ -51,6 +55,7 @@ export async function grantEntitlements(
     email: normalizedEmail,
     itemId,
     sessionId,
+    paymentIntentId,
     ts,
   }));
 
@@ -60,6 +65,30 @@ export async function grantEntitlements(
 
   console.log("[ENTITLEMENT] granted", JSON.stringify({ email: normalizedEmail, items, sessionId }));
   return records;
+}
+
+/**
+ * Revoke every entitlement tied to a Stripe PaymentIntent — used on refund or
+ * dispute. Idempotent: revoking an unknown/already-revoked payment removes
+ * nothing and is a safe no-op. Returns the number of records removed.
+ */
+export async function revokeByPaymentIntent(paymentIntentId: string): Promise<number> {
+  if (!paymentIntentId) return 0;
+  const records = await readAll();
+  const remaining = records.filter((r) => r.paymentIntentId !== paymentIntentId);
+  const removed = records.length - remaining.length;
+  if (removed === 0) return 0;
+
+  const file = entitlementsFile();
+  await mkdir(path.dirname(file), { recursive: true });
+  await writeFile(
+    file,
+    remaining.map((r) => JSON.stringify(r)).join("\n") + (remaining.length ? "\n" : ""),
+    "utf-8"
+  );
+
+  console.log("[ENTITLEMENT] revoked", JSON.stringify({ paymentIntentId, removed }));
+  return removed;
 }
 
 /** True if the customer owns the given item. */
