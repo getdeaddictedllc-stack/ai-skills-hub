@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { LegalPage, LEGAL_CONTACT } from "@/components/legal/LegalPage";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | AI Skills Hub",
+  title: "Privacy Policy",
   description: "What AI Skills Hub and its apps collect when you sign in, how it is used, and how to have it deleted.",
   alternates: { canonical: "https://aiskillhub.info/privacy" },
 };

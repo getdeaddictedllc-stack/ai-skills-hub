@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { LegalPage, LEGAL_CONTACT } from "@/components/legal/LegalPage";
 
 export const metadata: Metadata = {
-  title: "Terms of Service | AI Skills Hub",
+  title: "Terms of Service",
   description: "The rules for using AI Skills Hub and its apps.",
   alternates: { canonical: "https://aiskillhub.info/terms" },
 };
