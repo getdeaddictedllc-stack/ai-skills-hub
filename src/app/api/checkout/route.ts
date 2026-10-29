@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { priceCatalogItem } from "@/lib/checkout-pricing";
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://aiskillhub.info";
@@ -13,6 +14,13 @@ interface CheckoutItem {
 }
 
 export async function POST(req: NextRequest) {
+  // Without the webhook secret a paid order can't be fulfilled, so don't take money yet.
+  if (STRIPE_SECRET_KEY && !process.env.STRIPE_WEBHOOK_SECRET) {
+    return NextResponse.json(
+      { error: "Checkout opens shortly. Payments are being connected." },
+      { status: 503 }
+    );
+  }
   if (!STRIPE_SECRET_KEY) {
     return NextResponse.json(
       { error: "Stripe is not configured. Set STRIPE_SECRET_KEY in environment variables." },
@@ -34,19 +42,31 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const lineItems = items.map((item) => ({
+  if (items.length > 50) {
+    return NextResponse.json({ error: "Too many items in one checkout" }, { status: 400 });
+  }
+  // Price every item from the catalog. The request only says what to buy, never what it costs.
+  const seen = new Set<string>();
+  const priced = [];
+  for (const item of items) {
+    const p = priceCatalogItem(item);
+    if (!p) {
+      return NextResponse.json({ error: `Unknown item: ${String(item?.id ?? "")}` }, { status: 400 });
+    }
+    if (p.unitAmount < 50) {
+      return NextResponse.json({ error: `${p.name} is not for sale` }, { status: 400 });
+    }
+    if (!seen.has(p.id)) {
+      seen.add(p.id);
+      priced.push(p);
+    }
+  }
+
+  const lineItems = priced.map((p) => ({
     price_data: {
       currency: "usd",
-      product_data: {
-        name: item.name,
-        description: `${item.type.charAt(0).toUpperCase() + item.type.slice(1)} - ${item.category} (${item.industry})`,
-        metadata: {
-          item_id: item.id,
-          item_type: item.type,
-          industry: item.industry,
-        },
-      },
-      unit_amount: Math.round(item.price * 100),
+      product_data: { name: p.name, description: p.description },
+      unit_amount: p.unitAmount,
     },
     quantity: 1,
   }));
@@ -64,7 +84,7 @@ export async function POST(req: NextRequest) {
       "cancel_url": `${SITE_URL}/cart`,
       "metadata[customer_name]": name,
       "metadata[customer_email]": email,
-      "metadata[item_ids]": items.map((i) => i.id).join(","),
+      "metadata[item_ids]": priced.map((i) => i.id).join(","),
       ...lineItems.reduce(
         (acc, item, idx) => ({
           ...acc,
