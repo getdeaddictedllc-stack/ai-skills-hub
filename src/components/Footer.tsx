@@ -66,9 +66,14 @@ export function Footer() {
           <p className="text-xs text-gray-400 dark:text-gray-500">
             &copy; {new Date().getFullYear()} AI Skills Hub. All rights reserved.
           </p>
-          <p className="text-xs text-gray-400 dark:text-gray-500">
-            Exploring AI across 35+ industries
-          </p>
+          <nav aria-label="Legal" className="flex items-center gap-4 text-xs">
+            <Link href="/privacy" className="text-gray-500 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400">
+              Privacy Policy
+            </Link>
+            <Link href="/terms" className="text-gray-500 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400">
+              Terms of Service
+            </Link>
+          </nav>
         </div>
       </div>
     </footer>
